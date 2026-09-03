@@ -5,15 +5,52 @@ def calculate_project_cost(own_capital: float, margin_pct: float = 0.10) -> floa
 def calculate_loan(project_cost: float, own_capital: float) -> float:
     return round(project_cost - own_capital, 2)
 
-# Simple scheme table (expand later from real scheme PDFs)
+def calculate_emi(loan: float, interest_pct: float, tenure_years: int) -> float:
+    """Calculate monthly reducing-balance EMI."""
+    months = tenure_years * 12
+    monthly_rate = interest_pct / 100 / 12
+    if months <= 0 or loan <= 0:
+        return 0.0
+    if monthly_rate == 0:
+        return round(loan / months, 2)
+    emi = loan * monthly_rate * (1 + monthly_rate) ** months
+    emi /= (1 + monthly_rate) ** months - 1
+    return round(emi, 2)
+
+# Indicative government scheme profiles for prototype routing.
+# Actual eligibility, subsidy, interest, and lender terms must be verified.
 SCHEMES = [
-    {"name": "Micro Finance", "min_cost": 0, "max_cost": 140000, "max_loan": 126000,
-     "interest": 7.0, "tenure_years": 5, "moratorium_months": 3},
-    {"name": "Term Loan", "min_cost": 140000, "max_cost": 5000000, "max_loan": 4500000,
+    {"name": "MUDRA Shishu", "min_cost": 0, "max_cost": 50000, "max_loan": 50000,
+     "interest": 8.0, "tenure_years": 5, "moratorium_months": 3},
+    {"name": "MUDRA Kishor", "min_cost": 50000, "max_cost": 500000, "max_loan": 500000,
+     "interest": 8.0, "tenure_years": 5, "moratorium_months": 3},
+    {"name": "MUDRA Tarun", "min_cost": 500000, "max_cost": 1000000, "max_loan": 1000000,
+     "interest": 8.0, "tenure_years": 5, "moratorium_months": 3},
+    {"name": "PMEGP", "min_cost": 1000000, "max_cost": 2500000, "max_loan": 2250000,
+     "interest": 8.0, "tenure_years": 7, "moratorium_months": 6},
+    {"name": "Stand-Up India", "min_cost": 2500000, "max_cost": 10000000, "max_loan": 9000000,
      "interest": 8.0, "tenure_years": 7, "moratorium_months": 6},
 ]
 
-def route_scheme(project_cost: float) -> dict:
+TARGETED_SCHEMES = {
+    "SC": {"name": "NSFDC Micro Finance Scheme", "max_loan": 300000},
+    "ST": {"name": "NSFDC Micro Finance Scheme", "max_loan": 300000},
+}
+
+def route_scheme(project_cost: float, business_type: str = "", caste_category: str = "",
+                 gender: str = "") -> dict:
+    if caste_category in TARGETED_SCHEMES and project_cost <= TARGETED_SCHEMES[caste_category]["max_loan"]:
+        targeted = dict(SCHEMES[2])
+        targeted.update(TARGETED_SCHEMES[caste_category])
+        return targeted
+    if gender == "Female" and project_cost <= 300000:
+        targeted = dict(SCHEMES[2])
+        targeted.update({"name": "Karnataka Udyogini", "max_loan": 300000})
+        return targeted
+    if business_type in {"Dairy Farming", "Goat Farming", "Poultry Farming", "Fruit & Vegetable Farming", "Agri Input Store"}:
+        agriculture = dict(SCHEMES[1])
+        agriculture.update({"name": "Kisan Credit Card", "max_loan": min(agriculture["max_loan"], 500000)})
+        return agriculture
     for scheme in SCHEMES:
         if scheme["min_cost"] < project_cost <= scheme["max_cost"]:
             return scheme

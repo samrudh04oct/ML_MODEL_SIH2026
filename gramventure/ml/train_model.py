@@ -10,27 +10,38 @@ from sklearn.compose import ColumnTransformer
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import mean_absolute_error, r2_score
 import joblib
-import os
+from pathlib import Path
 
-DATA_PATH = "ml/dataset/training_data.csv"
-MODEL_PATH = "ml/model/feasibility_model.pkl"
+BASE_DIR = Path(__file__).resolve().parent
+DATA_PATH = BASE_DIR / "dataset" / "training_data.csv"
+MODEL_PATH = BASE_DIR / "model" / "feasibility_model.pkl"
 
 NUMERIC_FEATURES = [
-    "population", "households", "competitors", "suppliers",
-    "own_capital", "project_cost", "loan_amount", "interest_rate",
-    "monthly_revenue", "monthly_opex", "coverage_ratio"
+    "nearby_population", "estimated_households", "distance_to_market_km",
+    "competitor_count", "competitor_density_per_1000_households",
+    "market_demand_index", "available_capital_inr", "estimated_project_cost_inr",
+    "recommended_loan_need_inr", "capital_adequacy_pct", "raw_material_availability",
+    "infrastructure_score", "season_stability_score", "skill_availability_score",
+    "transport_access_score", "expected_monthly_revenue_inr",
+    "expected_monthly_operating_cost_inr", "expected_monthly_profit_inr",
+    "business_risk_score"
 ]
-CATEGORICAL_FEATURES = ["business_type", "district"]
-TARGET = "feasibility_score"
+CATEGORICAL_FEATURES = ["village", "district", "state", "business_type",
+                        "applicant_caste_category", "applicant_gender"]
+TARGET = "viability_score"
 
 def load_dataset():
-    df = pd.read_csv(DATA_PATH)
+    df = pd.read_csv(DATA_PATH, sep=None, engine="python")
     if df.empty:
         raise ValueError(
             f"'{DATA_PATH}' has no rows yet. Populate it with historical "
             f"assessment data before training. Each row needs values for: "
             f"{NUMERIC_FEATURES + CATEGORICAL_FEATURES + [TARGET]}"
         )
+    required_columns = NUMERIC_FEATURES + CATEGORICAL_FEATURES + [TARGET]
+    missing_columns = [column for column in required_columns if column not in df.columns]
+    if missing_columns:
+        raise ValueError(f"Missing required columns: {missing_columns}")
     return df
 
 def build_pipeline():
@@ -57,7 +68,7 @@ def train():
     print(f"MAE: {mean_absolute_error(y_test, preds):.2f}")
     print(f"R2:  {r2_score(y_test, preds):.3f}")
 
-    os.makedirs("ml/model", exist_ok=True)
+    MODEL_PATH.parent.mkdir(parents=True, exist_ok=True)
     joblib.dump(pipeline, MODEL_PATH)
     print(f"Model saved to {MODEL_PATH}")
 
